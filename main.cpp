@@ -2,6 +2,9 @@
 #include <thread>
 #include <iostream>
 
+#define APPNAME "Daxa Template App"
+#define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
+
 #include <daxa/utils/imgui.hpp>
 #include "imgui/imgui_impl_glfw.h"
 
@@ -28,7 +31,9 @@ struct App : AppWindow<App>
     daxa::Context daxa_ctx = daxa::create_context({
         .enable_validation = true,
     });
-    daxa::Device device = daxa_ctx.create_device({});
+    daxa::Device device = daxa_ctx.create_device({
+        .debug_name = APPNAME_PREFIX("device"),
+    });
 
     daxa::Swapchain swapchain = device.create_swapchain({
         .native_window = get_native_handle(),
@@ -44,15 +49,15 @@ struct App : AppWindow<App>
         },
         .present_mode = daxa::PresentMode::DO_NOT_WAIT_FOR_VBLANK,
         .image_usage = daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .debug_name = "Mandelbrot Swapchain",
+        .debug_name = APPNAME_PREFIX("swpachain"),
     });
 
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
         .root_paths = {
-            "shaders",
             ".out/debug/vcpkg_installed/x64-windows/include",
+            "shaders",
         },
-        .debug_name = "Mandelbrot Pipeline Compiler",
+        .debug_name = APPNAME_PREFIX("pipeline_compiler"),
     });
 
     daxa::ImGuiRenderer imgui_renderer = create_imgui_renderer();
@@ -71,13 +76,13 @@ struct App : AppWindow<App>
     daxa::ComputePipeline compute_pipeline = pipeline_compiler.create_compute_pipeline({
         .shader_info = {.source = daxa::ShaderFile{"compute.hlsl"}},
         .push_constant_size = sizeof(ComputePush),
-        .debug_name = "Mandelbrot Compute Pipeline",
+        .debug_name = APPNAME_PREFIX("compute_pipeline"),
     }).value();
     // clang-format on
 
     daxa::BufferId compute_input_buffer = device.create_buffer(daxa::BufferInfo{
         .size = sizeof(ComputeInput),
-        .debug_name = "Mandelbrot Compute Input buffer",
+        .debug_name = APPNAME_PREFIX("compute_input_buffer"),
     });
     ComputeInput compute_input = {};
 
@@ -85,17 +90,17 @@ struct App : AppWindow<App>
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {size_x, size_y, 1},
         .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-        .debug_name = "Mandelbrot Render Image",
+        .debug_name = APPNAME_PREFIX("render_image"),
     });
 
     daxa::BinarySemaphore binary_semaphore = device.create_binary_semaphore({
-        .debug_name = "Mandelbrot Present Semaphore",
+        .debug_name = APPNAME_PREFIX("binary_semaphore"),
     });
 
     static inline constexpr u64 FRAMES_IN_FLIGHT = 1;
     daxa::TimelineSemaphore gpu_framecount_timeline_sema = device.create_timeline_semaphore(daxa::TimelineSemaphoreInfo{
         .initial_value = 0,
-        .debug_name = "Mandelbrot gpu framecount Timeline Semaphore",
+        .debug_name = APPNAME_PREFIX("gpu_framecount_timeline_sema"),
     });
     u64 cpu_framecount = FRAMES_IN_FLIGHT - 1;
 
@@ -103,7 +108,7 @@ struct App : AppWindow<App>
 
     bool should_resize = false;
 
-    App() : AppWindow<App>("Samples: Mandelbrot") {}
+    App() : AppWindow<App>(APPNAME) {}
 
     ~App()
     {
@@ -170,7 +175,7 @@ struct App : AppWindow<App>
         auto swapchain_image = swapchain.acquire_next_image();
 
         auto cmd_list = device.create_command_list({
-            .debug_name = "Mandelbrot Command List",
+            .debug_name = APPNAME_PREFIX("cmd_list"),
         });
 
         auto now = Clock::now();
@@ -179,7 +184,7 @@ struct App : AppWindow<App>
         auto compute_input_staging_buffer = device.create_buffer({
             .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
             .size = sizeof(ComputeInput),
-            .debug_name = "Mandelbrot Compute Input Staging buffer " + std::to_string(cpu_framecount),
+            .debug_name = APPNAME_PREFIX("compute_input_staging_buffer"),
         });
         cmd_list.destroy_buffer_deferred(compute_input_staging_buffer);
 
