@@ -1,0 +1,5 @@
+.out*
+.vs*
+
+imgui.ini
+task_list.dot
