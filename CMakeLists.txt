@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(daxa_test)
+project(daxa-template)
 
 find_package(daxa CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)

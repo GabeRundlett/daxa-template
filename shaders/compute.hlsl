@@ -1,20 +1,6 @@
-#include "daxa/daxa.hlsl"
-struct Input
-{
-    uint2 frame_dim;
-    float2 view_origin;
-    float zoom;
-    float time;
-    int max_steps;
-};
-DAXA_DEFINE_GET_STRUCTURED_BUFFER(Input);
+#include "shared.inl"
 
-struct Push
-{
-    daxa::ImageViewId image_id;
-    daxa::BufferId input_buffer_id;
-};
-[[vk::push_constant]] const Push p;
+[[vk::push_constant]] const ComputePush p;
 
 #define SUBSAMPLES 2
 
@@ -27,7 +13,7 @@ float3 hsv2rgb(float3 c)
 
 float3 mandelbrot_colored(float2 pixel_p)
 {
-    StructuredBuffer<Input> input = daxa::get_StructuredBuffer<Input>(p.input_buffer_id);
+    StructuredBuffer<GpuInput> input = daxa::get_StructuredBuffer<GpuInput>(p.input_buffer_id);
     float2 uv = pixel_p / float2(input[0].frame_dim.xy);
     uv = (uv - 0.5) * float2(float(input[0].frame_dim.x) / float(input[0].frame_dim.y), 1);
     float time = input[0].time;
@@ -61,7 +47,7 @@ float3 mandelbrot_colored(float2 pixel_p)
 [numthreads(8, 8, 1)] void main(uint3 pixel_i : SV_DispatchThreadID)
 // clang-format on
 {
-    StructuredBuffer<Input> input = daxa::get_StructuredBuffer<Input>(p.input_buffer_id);
+    StructuredBuffer<GpuInput> input = daxa::get_StructuredBuffer<GpuInput>(p.input_buffer_id);
     RWTexture2D<float4> render_image = daxa::get_RWTexture2D<float4>(p.image_id);
     if (pixel_i.x >= input[0].frame_dim.x || pixel_i.y >= input[0].frame_dim.y)
         return;
