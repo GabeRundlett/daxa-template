@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <iostream>
+#include <cmath>
 
 #define APPNAME "Daxa Template App"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
