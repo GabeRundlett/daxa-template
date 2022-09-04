@@ -1,5 +1,4 @@
 #include "window.hpp"
-#include "shaders/shared.inl"
 
 #include <thread>
 #include <iostream>
@@ -12,6 +11,8 @@
 #include "imgui/imgui_impl_glfw.h"
 
 using namespace daxa::types;
+#include "shaders/shared.inl"
+
 using Clock = std::chrono::high_resolution_clock;
 
 struct App : AppWindow<App>
@@ -41,9 +42,12 @@ struct App : AppWindow<App>
     });
 
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
-        .root_paths = {
-            ".out/debug/vcpkg_installed/x64-windows/include",
-            "shaders",
+        .shader_compile_options = {
+            .root_paths = {
+                ".out/debug/vcpkg_installed/x64-windows/include",
+                "shaders",
+            },
+            .language = daxa::ShaderLanguage::HLSL,
         },
         .debug_name = APPNAME_PREFIX("pipeline_compiler"),
     });

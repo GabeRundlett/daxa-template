@@ -1,24 +1,20 @@
 #pragma once
 
-#ifdef __cplusplus
-#include <daxa/daxa.hpp>
-#else
-#include "daxa/daxa.hlsl"
-#endif
+#include <daxa/daxa.inl>
 
 struct GpuInput
 {
-    daxa::u32vec2 frame_dim;
-    daxa::f32vec2 view_origin;
-    daxa::f32vec2 mouse_pos;
-    daxa::f32 zoom;
-    daxa::f32 time;
-    daxa::i32 max_steps;
+    u32vec2 frame_dim;
+    f32vec2 view_origin;
+    f32vec2 mouse_pos;
+    f32 zoom;
+    f32 time;
+    i32 max_steps;
 };
-DAXA_DEFINE_GET_STRUCTURED_BUFFER(GpuInput);
+DAXA_REGISTER_STRUCT_GET_BUFFER(GpuInput);
 
 struct ComputePush
 {
-    daxa::ImageViewId image_id;
-    daxa::BufferId input_buffer_id;
+    ImageViewId image_id;
+    BufferId input_buffer_id;
 };
