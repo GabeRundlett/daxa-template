@@ -44,7 +44,11 @@ struct App : AppWindow<App>
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
         .shader_compile_options = {
             .root_paths = {
+#if _WIN32
                 ".out/debug/vcpkg_installed/x64-windows/include",
+#elif __linux__
+                ".out/debug/vcpkg_installed/x64-linux/include",
+#endif
                 "shaders",
             },
             .language = daxa::ShaderLanguage::HLSL,
@@ -280,10 +284,8 @@ struct App : AppWindow<App>
         });
 
         new_task_list.add_task({
-            .resources = {
-                .buffers = {
-                    {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
-                },
+            .used_buffers = {
+                {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
             },
             .task = [this](daxa::TaskInterface /* interf */)
             {
@@ -294,11 +296,9 @@ struct App : AppWindow<App>
             .debug_name = APPNAME_PREFIX("Input MemMap"),
         });
         new_task_list.add_task({
-            .resources = {
-                .buffers = {
-                    {task_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
-                    {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
-                },
+            .used_buffers = {
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
+                {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
             },
             .task = [this](daxa::TaskInterface interf)
             {
@@ -313,13 +313,11 @@ struct App : AppWindow<App>
         });
 
         new_task_list.add_task({
-            .resources = {
-                .buffers = {
-                    {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
-                },
-                .images = {
-                    {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
-                },
+            .used_buffers = {
+                {task_gpu_input_buffer, daxa::TaskBufferAccess::COMPUTE_SHADER_READ_ONLY},
+            },
+            .used_images = {
+                {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
             },
             .task = [this](daxa::TaskInterface interf)
             {
@@ -335,11 +333,9 @@ struct App : AppWindow<App>
         });
 
         new_task_list.add_task({
-            .resources = {
-                .images = {
-                    {task_render_image, daxa::TaskImageAccess::TRANSFER_READ},
-                    {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE},
-                },
+            .used_images = {
+                {task_render_image, daxa::TaskImageAccess::TRANSFER_READ},
+                {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE},
             },
             .task = [this](daxa::TaskInterface interf)
             {
@@ -359,10 +355,8 @@ struct App : AppWindow<App>
         });
 
         new_task_list.add_task({
-            .resources = {
-                .images = {
-                    {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT},
-                },
+            .used_images = {
+                {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT},
             },
             .task = [this](daxa::TaskInterface interf)
             {
