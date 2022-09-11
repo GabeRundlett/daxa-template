@@ -108,6 +108,10 @@ struct App : AppWindow<App>
     daxa::TaskBufferId task_gpu_input_buffer;
     daxa::TaskBufferId task_staging_gpu_input_buffer;
 
+    daxa::BinarySemaphore acquire_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("acquire_semaphore")});
+    daxa::BinarySemaphore present_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("present_semaphore")});
+    daxa::CommandSubmitInfo submit_info;
+
     daxa::ImageId render_image = device.create_image(daxa::ImageInfo{
         .format = daxa::Format::R8G8B8A8_UNORM,
         .size = {size_x, size_y, 1},
@@ -123,6 +127,8 @@ struct App : AppWindow<App>
 
     ~App()
     {
+        device.wait_idle();
+        device.collect_garbage();
         ImGui_ImplGlfw_Shutdown();
         device.destroy_buffer(gpu_input_buffer);
         device.destroy_buffer(staging_gpu_input_buffer);
@@ -175,29 +181,10 @@ struct App : AppWindow<App>
             }
         }
 
-        swapchain_image = swapchain.acquire_next_image();
-
-        loop_task_list.execute();
-        auto command_lists = loop_task_list.command_lists();
-        auto cmd_list = device.create_command_list({});
-        cmd_list.pipeline_barrier_image_transition({
-            .awaited_pipeline_access = loop_task_list.last_access(task_swapchain_image),
-            .before_layout = loop_task_list.last_layout(task_swapchain_image),
-            .after_layout = daxa::ImageLayout::PRESENT_SRC,
-            .image_id = swapchain_image,
-        });
-        cmd_list.complete();
+        swapchain_image = swapchain.acquire_next_image(acquire_semaphore);
         ++cpu_framecount;
-        command_lists.push_back(cmd_list);
-        device.submit_commands({
-            .command_lists = command_lists,
-            .signal_binary_semaphores = {binary_semaphore},
-            .signal_timeline_semaphores = {{gpu_framecount_timeline_sema, cpu_framecount}},
-        });
-        device.present_frame({
-            .wait_binary_semaphores = {binary_semaphore},
-            .swapchain = swapchain,
-        });
+        submit_info.signal_timeline_semaphores = {{gpu_framecount_timeline_sema, cpu_framecount}};
+        loop_task_list.execute();
         gpu_framecount_timeline_sema.wait_for_value(cpu_framecount - 1);
     }
 
@@ -222,25 +209,20 @@ struct App : AppWindow<App>
     }
     void on_resize(u32 sx, u32 sy)
     {
-        size_x = sx;
-        size_y = sy;
         minimized = (sx == 0 || sy == 0);
         if (!minimized)
         {
-            do_resize();
+            swapchain.resize();
+            size_x = swapchain.info().width;
+            size_y = swapchain.info().height;
+            device.destroy_image(render_image);
+            render_image = device.create_image({
+                .format = daxa::Format::R8G8B8A8_UNORM,
+                .size = {size_x, size_y, 1},
+                .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
+            });
+            on_update();
         }
-    }
-
-    void do_resize()
-    {
-        device.destroy_image(render_image);
-        render_image = device.create_image({
-            .format = daxa::Format::R8G8B8A8_UNORM,
-            .size = {size_x, size_y, 1},
-            .usage = daxa::ImageUsageFlagBits::SHADER_READ_WRITE | daxa::ImageUsageFlagBits::TRANSFER_SRC,
-        });
-        swapchain.resize(size_x, size_y);
-        on_update();
     }
 
     void ui_update()
@@ -264,6 +246,7 @@ struct App : AppWindow<App>
         task_swapchain_image = new_task_list.create_task_image({
             .fetch_callback = [this]()
             { return swapchain_image; },
+            .swapchain_parent = std::pair{swapchain, acquire_semaphore},
             .debug_name = APPNAME_PREFIX("task_swapchain_image"),
         });
         task_render_image = new_task_list.create_task_image({
@@ -366,6 +349,8 @@ struct App : AppWindow<App>
             .debug_name = APPNAME_PREFIX("ImGui Task"),
         });
 
+        new_task_list.submit(&submit_info);
+        new_task_list.present({});
         new_task_list.compile();
 
         return new_task_list;
