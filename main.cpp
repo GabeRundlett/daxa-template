@@ -7,8 +7,11 @@
 #define APPNAME "Daxa Template App"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
+#define DAXA_GLSL 0
+#define DAXA_HLSL 1
+
 #include <daxa/utils/imgui.hpp>
-#include "imgui/imgui_impl_glfw.h"
+#include <imgui_impl_glfw.h>
 
 using namespace daxa::types;
 #include "shaders/shared.inl"
@@ -44,14 +47,14 @@ struct App : AppWindow<App>
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
         .shader_compile_options = {
             .root_paths = {
-#if _WIN32
-                ".out/debug/vcpkg_installed/x64-windows/include",
-#elif __linux__
-                ".out/debug/vcpkg_installed/x64-linux/include",
-#endif
+                DAXA_SHADER_INCLUDE_DIR,
                 "shaders",
             },
+#if DAXA_GLSL
+            .language = daxa::ShaderLanguage::GLSL,
+#elif DAXA_HLSL
             .language = daxa::ShaderLanguage::HLSL,
+#endif
         },
         .debug_name = APPNAME_PREFIX("pipeline_compiler"),
     });
@@ -83,7 +86,11 @@ struct App : AppWindow<App>
 
     // clang-format off
     daxa::ComputePipeline compute_pipeline = pipeline_compiler.create_compute_pipeline({
+#if DAXA_GLSL
+        .shader_info = {.source = daxa::ShaderFile{"compute.glsl"}},
+#elif DAXA_HLSL
         .shader_info = {.source = daxa::ShaderFile{"compute.hlsl"}},
+#endif
         .push_constant_size = sizeof(ComputePush),
         .debug_name = APPNAME_PREFIX("compute_pipeline"),
     }).value();
@@ -306,9 +313,13 @@ struct App : AppWindow<App>
             {
                 auto cmd_list = interf.get_command_list();
                 cmd_list.set_pipeline(compute_pipeline);
-                cmd_list.push_constant(ComputePush{
+                cmd_list.push_constant(ComputePush {
                     .image_id = render_image.default_view(),
+#if DAXA_GLSL
+                    .gpu_input = this->device.buffer_reference(gpu_input_buffer),
+#elif DAXA_HLSL
                     .input_buffer_id = gpu_input_buffer,
+#endif
                 });
                 cmd_list.dispatch((size_x + 7) / 8, (size_y + 7) / 8);
             },

@@ -11,6 +11,12 @@
             ]
         },
         "glfw3",
-        "glm"
+        "glm",
+        {
+            "name": "imgui",
+            "features": [
+                "glfw-binding"
+            ]
+        }
     ]
 }
