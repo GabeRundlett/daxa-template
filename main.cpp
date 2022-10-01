@@ -248,28 +248,25 @@ struct App : AppWindow<App>
     {
         daxa::TaskList new_task_list = daxa::TaskList({
             .device = device,
+            .swapchain = swapchain,
             .debug_name = APPNAME_PREFIX("task_list"),
         });
         task_swapchain_image = new_task_list.create_task_image({
-            .fetch_callback = [this]()
-            { return swapchain_image; },
-            .swapchain_parent = std::pair{swapchain, acquire_semaphore},
+            .image = &swapchain_image,
+            .swapchain_image = true,
             .debug_name = APPNAME_PREFIX("task_swapchain_image"),
         });
         task_render_image = new_task_list.create_task_image({
-            .fetch_callback = [this]()
-            { return render_image; },
+            .image = &render_image,
             .debug_name = APPNAME_PREFIX("task_render_image"),
         });
 
         task_gpu_input_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]()
-            { return gpu_input_buffer; },
+            .buffer = &gpu_input_buffer,
             .debug_name = APPNAME_PREFIX("task_gpu_input_buffer"),
         });
         task_staging_gpu_input_buffer = new_task_list.create_task_buffer({
-            .fetch_callback = [this]()
-            { return staging_gpu_input_buffer; },
+            .buffer = &staging_gpu_input_buffer,
             .debug_name = APPNAME_PREFIX("task_staging_gpu_input_buffer"),
         });
 
@@ -277,7 +274,7 @@ struct App : AppWindow<App>
             .used_buffers = {
                 {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::HOST_TRANSFER_WRITE},
             },
-            .task = [this](daxa::TaskInterface /* interf */)
+            .task = [this](daxa::TaskRuntime /* runtime */)
             {
                 GpuInput * buffer_ptr = device.map_memory_as<GpuInput>(staging_gpu_input_buffer);
                 *buffer_ptr = this->gpu_input;
@@ -290,9 +287,9 @@ struct App : AppWindow<App>
                 {task_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_WRITE},
                 {task_staging_gpu_input_buffer, daxa::TaskBufferAccess::TRANSFER_READ},
             },
-            .task = [this](daxa::TaskInterface interf)
+            .task = [this](daxa::TaskRuntime runtime)
             {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = runtime.get_command_list();
                 cmd_list.copy_buffer_to_buffer({
                     .src_buffer = staging_gpu_input_buffer,
                     .dst_buffer = gpu_input_buffer,
@@ -309,9 +306,9 @@ struct App : AppWindow<App>
             .used_images = {
                 {task_render_image, daxa::TaskImageAccess::COMPUTE_SHADER_WRITE_ONLY},
             },
-            .task = [this](daxa::TaskInterface interf)
+            .task = [this](daxa::TaskRuntime runtime)
             {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = runtime.get_command_list();
                 cmd_list.set_pipeline(compute_pipeline);
                 cmd_list.push_constant(ComputePush {
                     .image_id = render_image.default_view(),
@@ -331,9 +328,9 @@ struct App : AppWindow<App>
                 {task_render_image, daxa::TaskImageAccess::TRANSFER_READ},
                 {task_swapchain_image, daxa::TaskImageAccess::TRANSFER_WRITE},
             },
-            .task = [this](daxa::TaskInterface interf)
+            .task = [this](daxa::TaskRuntime runtime)
             {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = runtime.get_command_list();
                 cmd_list.blit_image_to_image({
                     .src_image = render_image,
                     .src_image_layout = daxa::ImageLayout::TRANSFER_SRC_OPTIMAL,
@@ -352,9 +349,9 @@ struct App : AppWindow<App>
             .used_images = {
                 {task_swapchain_image, daxa::TaskImageAccess::COLOR_ATTACHMENT},
             },
-            .task = [this](daxa::TaskInterface interf)
+            .task = [this](daxa::TaskRuntime runtime)
             {
-                auto cmd_list = interf.get_command_list();
+                auto cmd_list = runtime.get_command_list();
                 imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
             },
             .debug_name = APPNAME_PREFIX("ImGui Task"),
@@ -362,7 +359,7 @@ struct App : AppWindow<App>
 
         new_task_list.submit(&submit_info);
         new_task_list.present({});
-        new_task_list.compile();
+        new_task_list.complete();
 
         return new_task_list;
     }

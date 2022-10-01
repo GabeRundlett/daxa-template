@@ -3,6 +3,7 @@ using namespace daxa::types;
 
 #include <GLFW/glfw3.h>
 #if defined(_WIN32)
+#define NOMINMAX
 #define GLFW_EXPOSE_NATIVE_WIN32
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
