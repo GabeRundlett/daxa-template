@@ -7,8 +7,7 @@
 #define APPNAME "Daxa Template App"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
-#define DAXA_GLSL 1
-#define DAXA_HLSL 0
+#define DAXA_SHADERLANG DAXA_SHADERLANG_GLSL
 
 #include <daxa/utils/imgui.hpp>
 #include <imgui_impl_glfw.h>
@@ -50,9 +49,9 @@ struct App : AppWindow<App>
                 DAXA_SHADER_INCLUDE_DIR,
                 "shaders",
             },
-#if DAXA_GLSL
+#if DAXA_SHADERLANG == DAXA_SHADERLANG_GLSL
             .language = daxa::ShaderLanguage::GLSL,
-#elif DAXA_HLSL
+#elif DAXA_SHADERLANG == DAXA_SHADERLANG_HLSL
             .language = daxa::ShaderLanguage::HLSL,
 #endif
         },
@@ -76,9 +75,9 @@ struct App : AppWindow<App>
 
     // clang-format off
     daxa::ComputePipeline compute_pipeline = pipeline_compiler.create_compute_pipeline({
-#if DAXA_GLSL
+#if DAXA_SHADERLANG == DAXA_SHADERLANG_GLSL
         .shader_info = {.source = daxa::ShaderFile{"compute.glsl"}},
-#elif DAXA_HLSL
+#elif DAXA_SHADERLANG == DAXA_SHADERLANG_HLSL
         .shader_info = {.source = daxa::ShaderFile{"compute.hlsl"}},
 #endif
         .push_constant_size = sizeof(ComputePush),
@@ -300,9 +299,9 @@ struct App : AppWindow<App>
                 cmd_list.set_pipeline(compute_pipeline);
                 cmd_list.push_constant(ComputePush {
                     .image_id = render_image.default_view(),
-#if DAXA_GLSL
+#if DAXA_SHADERLANG == DAXA_SHADERLANG_GLSL
                     .gpu_input = this->device.buffer_reference(gpu_input_buffer),
-#elif DAXA_HLSL
+#elif DAXA_SHADERLANG == DAXA_SHADERLANG_HLSL
                     .input_buffer_id = gpu_input_buffer,
 #endif
                 });
